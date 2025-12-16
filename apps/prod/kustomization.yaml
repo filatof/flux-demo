@@ -1,15 +1,45 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-- ../base
-#patches:
-#- target:
-#   kind: Deployment
-#   name: loadgenerator
-#   namespace: default
-#   group: apps
-#   version: v1
-#  patch: |-
-#   - op: replace
-#     path: /spec/template/spec/containers/0/image
-#     value: "registry.eqlan.ru:443/boutique-app/loadgenerator:20250919-1736-c9b76c0
+  - ../base/online-boutique
+
+# Можно добавить патчи специфичные для prod
+# Например, изменить количество реплик или ресурсы
+# patches:
+#   # Увеличим replicas для frontend в prod
+#   - target:
+#       kind: Deployment
+#       name: frontend
+#       namespace: online-boutique
+#     patch: |-
+#       - op: replace
+#         path: /spec/replicas
+#         value: 3
+  
+  # Можно изменить адрес коллектора для prod, если отличается
+  # - patch: |-
+  #     apiVersion: kustomize.toolkit.fluxcd.io/v1
+  #     kind: Kustomization
+  #     metadata:
+  #       name: online-boutique-app
+  #     spec:
+  #       patches:
+  #         - patch: |-
+  #             apiVersion: apps/v1
+  #             kind: Deployment
+  #             metadata:
+  #               name: frontend
+  #             spec:
+  #               template:
+  #                 spec:
+  #                   containers:
+  #                     - name: server
+  #                       env:
+  #                       - name: COLLECTOR_SERVICE_ADDR
+  #                         value: "alloy-prod.monitoring.svc.cluster.local:4317"
+  #           target:
+  #             kind: Deployment
+  #             name: frontend
+  #   target:
+  #     kind: Kustomization
+  #     name: online-boutique-app
