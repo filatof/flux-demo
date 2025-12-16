@@ -15,30 +15,30 @@ patches:
         path: /spec/replicas
         value: 1
   
-  # Другой адрес коллектора для stage (если нужно)
-  - patch: |-
-      apiVersion: kustomize.toolkit.fluxcd.io/v1
-      kind: Kustomization
-      metadata:
-        name: online-boutique-app
-      spec:
-        patches:
-          - patch: |-
-              apiVersion: apps/v1
-              kind: Deployment
-              metadata:
-                name: frontend
-              spec:
-                template:
-                  spec:
-                    containers:
-                      - name: server
-                        env:
-                        - name: COLLECTOR_SERVICE_ADDR
-                          value: "alloy-stage.monitoring.svc.cluster.local:4317"
-            target:
-              kind: Deployment
-              name: frontend
-    target:
-      kind: Kustomization
-      name: online-boutique-app
+  # Другой адрес коллектора для stage 
+  # - patch: |-
+  #     apiVersion: kustomize.toolkit.fluxcd.io/v1
+  #     kind: Kustomization
+  #     metadata:
+  #       name: online-boutique-app
+  #     spec:
+  #       patches:
+  #         - patch: |-
+  #             apiVersion: apps/v1
+  #             kind: Deployment
+  #             metadata:
+  #               name: frontend
+  #             spec:
+  #               template:
+  #                 spec:
+  #                   containers:
+  #                     - name: server
+  #                       env:
+  #                       - name: COLLECTOR_SERVICE_ADDR
+  #                         value: "alloy-stage.monitoring.svc.cluster.local:4317"
+  #           target:
+  #             kind: Deployment
+  #             name: frontend
+  #   target:
+  #     kind: Kustomization
+  #     name: online-boutique-app
