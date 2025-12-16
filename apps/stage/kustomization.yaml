@@ -1,0 +1,44 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base/online-boutique
+
+# Патчи для stage окружения
+patches:
+  # Меньше реплик в stage
+  - target:
+      kind: Deployment
+      name: frontend
+      namespace: online-boutique
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  
+  # Другой адрес коллектора для stage (если нужно)
+  - patch: |-
+      apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: online-boutique-app
+      spec:
+        patches:
+          - patch: |-
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: frontend
+              spec:
+                template:
+                  spec:
+                    containers:
+                      - name: server
+                        env:
+                        - name: COLLECTOR_SERVICE_ADDR
+                          value: "alloy-stage.monitoring.svc.cluster.local:4317"
+            target:
+              kind: Deployment
+              name: frontend
+    target:
+      kind: Kustomization
+      name: online-boutique-app
