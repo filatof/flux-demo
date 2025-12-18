@@ -1,0 +1,16 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
+kind: HelmRelease
+metadata:
+  name: prometheus-stack
+  namespace: monitoring
+spec:
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      version: 80.5.x
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-stack
+      interval: 1h
+  interval: 1h
+  releaseName: prometheus-stack
