@@ -14,3 +14,133 @@ spec:
       interval: 1h
   interval: 1h
   releaseName: prometheus-stack
+  values:
+    # Отключаем node-exporter (используем Alloy)
+    nodeExporter:
+      enabled: true
+
+    prometheus-node-exporter:
+      enabled: true
+
+    # GRAFANA CONFIGURATION
+    grafana:
+      enabled: true
+      plugins:
+        - grafana-exploretraces-app
+
+      adminUser: admin
+      adminPassword: "12345678"
+
+      # Дополнительные data sources
+      additionalDataSources:
+      # LOKI
+      - name: Loki
+        type: loki
+        access: proxy
+        uid: loki
+        isDefault: false
+        url: http://loki-gateway.loki.svc.cluster.local/
+        jsonData:
+          maxLines: 5000
+          derivedFields:
+            - name: "trace"
+              matcherRegex: '"trace_id":\s*"([^"]+)"'
+              url: "$${__value.raw}"
+              datasourceUid: tempo
+              urlDisplayLabel: "View Trace"
+        editable: true
+
+      # TEMPO
+      - name: Tempo
+        type: tempo
+        access: proxy
+        uid: tempo
+        isDefault: false
+        url: http://tempo.tempo.svc.cluster.local:3200
+        editable: true
+        jsonData:
+          httpMethod: GET
+          tracesToLogsV2:
+            datasourceUid: loki
+            tags: []
+            spanStartTimeShift: "-1h"
+            spanEndTimeShift: "1h"
+            filterByTraceID: true
+            filterBySpanID: false
+            customQuery: true
+            query: '{service_name="$${__span.tags["service.name"]}"} |~ "trace_id.*$${__span.traceId}"'
+
+      # ALERTMANAGER
+      - name: Alertmanager
+        type: alertmanager
+        access: proxy
+        uid: alertmanager
+        url: http://prometheus-kube-prometheus-alertmanager.monitoring.svc.cluster.local:9093
+        jsonData:
+          implementation: prometheus
+          handleGrafanaManagedAlerts: false
+        editable: true
+
+      # Dashboards
+      dashboardProviders:
+        dashboardproviders.yaml:
+          apiVersion: 1
+          providers:
+          - name: 'default'
+            orgId: 1
+            folder: ''
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards/default
+
+      dashboards:
+        default:
+          node-exporter:
+            gnetId: 1860
+            revision: 42
+            datasource: Prometheus
+          loki:
+            gnetId: 24416
+            revision: 1
+            datasource: Loki
+          kubernetes-cluster:
+            gnetId: 7249
+            revision: 1
+            datasource: Prometheus
+          tempo:
+            gnetId: 16687
+            revision: 1
+            datasource: Tempo
+
+    # ALERTMANAGER CONFIGURATION
+    
+
+    # PROMETHEUS CONFIGURATION
+    prometheus:
+      enabled: true
+      prometheusSpec:
+        enableFeatures:
+          - exemplar-storage
+          - native-histograms
+        serviceMonitorNamespaceSelector: {}
+        serviceMonitorSelector: {}
+        podMonitorNamespaceSelector: {}
+        podMonitorSelector: {}
+        retention: 15d
+        externalLabels:
+          cluster: "local"
+          environment: "production"
+        alertingEndpoints:
+        - name: prometheus-kube-prometheus-alertmanager
+          namespace: monitoring
+          port: http-web
+          scheme: http
+        resources:
+          requests:
+            memory: 2Gi
+            cpu: 500m
+          limits:
+            memory: 4Gi
+            cpu: 2000m

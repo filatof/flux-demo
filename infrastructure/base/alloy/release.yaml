@@ -1,0 +1,175 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
+kind: HelmRelease
+metadata:
+  name: alloy
+  namespace: alloy
+spec:
+  chart:
+    spec:
+      chart: alloy
+      sourceRef:
+        kind: HelmRepository
+        name: alloy
+      interval: 1h
+  interval: 1h
+  releaseName: alloy
+  values:
+    alloy:
+      enabled: true
+
+      mode: daemonset
+
+      image:
+        repository: grafana/alloy
+        tag: latest
+
+      serviceAccount:
+        create: true
+        name: alloy
+
+      resources:
+        requests:
+          cpu: 100m
+          memory: 200Mi
+        limits:
+          cpu: 500m
+          memory: 500Mi
+
+      extraPorts:
+        - name: otlp-grpc
+          port: 4317
+          targetPort: 4317
+          protocol: TCP
+        - name: otlp-http
+          port: 4318
+          targetPort: 4318
+          protocol: TCP
+
+      configMap:
+        content: |
+          // ==================================================
+          // LOGS — Kubernetes Pods → Loki
+          // ==================================================
+          // находит цели для сбора данных из ресурсов куба, в данном случае с pod
+          // Роль pod обнаруживает все поды и предоставляет доступ к их контейнерам в качестве целей. 
+          // Для каждого объявленного порта контейнера создается отдельная цель. метки поумолчанию __meta_kubernetes_pod_name и тд
+          discovery.kubernetes "pods" {
+                role = "pod"
+            }
+          // перезаписывает набор меток входных объектов, перешисываем метки для удобного чтения, лишние отбрасываем
+          discovery.relabel "pods" {
+                targets = discovery.kubernetes.pods.targets
+                
+                rule {
+                source_labels = ["__meta_kubernetes_namespace"]
+                target_label  = "namespace"
+                }
+                
+                rule {
+                source_labels = ["__meta_kubernetes_pod_name"]
+                target_label  = "pod"
+                }
+                
+                rule {
+                source_labels = ["__meta_kubernetes_pod_container_name"]
+                target_label  = "container"
+                }
+                
+                rule {
+                source_labels = ["__meta_kubernetes_pod_node_name"]
+                target_label  = "node"
+                }
+            }
+            
+            // берет логи из stdout всех подов из набора discovery.relabel
+            loki.source.kubernetes "pods" { 
+                targets    = discovery.relabel.pods.output
+                forward_to = [loki.process.add_traceid_label.receiver]
+            }
+            // парсит строку лога, достает service и trace_id и делает из них лейблы
+            loki.process "add_traceid_label" {
+                forward_to = [loki.write.local.receiver]
+                // достает json строку из лога 
+                stage.regex {
+                      expression = "(?P<json_data>\\{.*\\})"
+                    }
+                // берем только service и treace_id
+                stage.json {
+                    source = "json_data"
+                    expressions = {
+                      service_name = "service",
+                      trace_id     = "trace_id",
+                    }
+                  }
+                // Делает лейбл 
+                stage.labels {
+                  values = {
+                    service_name = "service_name",
+                    trace_id     = "trace_id",
+                  }
+                }
+            }
+
+            loki.write "local" {
+                endpoint {
+                url = "http://loki-gateway.loki.svc.cluster.local/loki/api/v1/push"
+                }
+            }
+
+          // ==================================================
+          // LOGS — systemd / journald (node logs)
+          // ==================================================
+
+          loki.source.journal "system" {
+            max_age = "12h"
+
+            matches = join([
+              "_SYSTEMD_UNIT=kubelet.service",
+              "_SYSTEMD_UNIT=containerd.service",
+              "_SYSTEMD_UNIT=docker.service",
+              "_SYSTEMD_UNIT=crio.service",
+            ], ",")
+
+            labels = {
+              job    = "systemd-journal",
+              source = "node",
+            }
+
+            forward_to = [loki.write.local.receiver]
+          }
+
+          // ==================================================
+          // TRACES — OTLP → Tempo
+          // ==================================================
+
+          otelcol.receiver.otlp "default" {
+            grpc {
+              endpoint = "0.0.0.0:4317"
+            }
+
+            http {
+              endpoint = "0.0.0.0:4318"
+            }
+
+            output {
+              traces = [otelcol.processor.batch.default.input]
+            }
+          }
+
+          otelcol.processor.batch "default" {
+            output {
+              traces = [otelcol.exporter.otlp.tempo.input]
+            }
+          }
+
+          otelcol.exporter.otlp "tempo" {
+            client {
+              endpoint = "tempo.tempo.svc.cluster.local:4317"
+
+              tls {
+                insecure = true
+              }
+
+              compression = "gzip"
+            }
+          }
