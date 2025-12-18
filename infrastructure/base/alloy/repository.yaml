@@ -4,5 +4,5 @@ metadata:
   name: alloy
   namespace: alloy
 spec:
-  url: oci://registry-1.docker.io/bitnamicharts/grafana-alloy
-  type: oci
+  url: https://grafana.github.io/helm-charts
+  
