@@ -1,0 +1,12 @@
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmChart
+metadata:
+  name: prometheus-stack
+  namespace: monitoring
+spec:
+  interval: 1h
+  chart: prometheus-stack
+  sourceRef:
+    kind: HelmRepository
+    name: prometheus-stack
+  version: 80.5.x
