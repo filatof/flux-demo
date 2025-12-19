@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - ../base/hotrod
 
+
 # Патчи для stage окружения
 # patches:
 #   # Меньше реплик в stage
