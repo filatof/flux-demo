@@ -1,0 +1,16 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
+kind: HelmRelease
+metadata:
+  name: tempo
+  namespace: tempo
+spec:
+  chart:
+    spec:
+      chart: tempo
+      version: 1.24.x
+      sourceRef:
+        kind: HelmRepository
+        name: tempo
+      interval: 1h
+  interval: 1h
+  releaseName: tempo

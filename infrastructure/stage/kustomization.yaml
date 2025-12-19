@@ -4,4 +4,6 @@ resources:
   - ../base/prometheus
   - ../base/alloy
   - ../base/loki
+  - ../base/tempo
+
   
