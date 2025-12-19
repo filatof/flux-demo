@@ -14,3 +14,22 @@ spec:
       interval: 1h
   interval: 1h
   releaseName: tempo
+  values:
+    tempo:
+      # Specific commit for reproducibility
+      tag: main-814c1c6
+        
+      # Metrics generator - The key feature for traces → metrics integration
+      metricsGenerator:
+        enabled: true
+        remoteWriteUrl: "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
+          
+      # Enable service graphs and span metrics
+      overrides:
+        defaults:
+          metrics_generator:
+            processors: [service-graphs, span-metrics, local-blocks]
+
+    # Enable persistence for realistic setup
+    persistence:
+      enabled: true
