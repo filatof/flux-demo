@@ -2,7 +2,7 @@ apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:
   name: online-boutique
-  namespace: flux-system
+  namespace: online-boutique
 spec:
   interval: 5m
   url: https://gitlab.eqlan.ru/fill/online-boutique.git
