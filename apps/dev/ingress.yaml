@@ -8,12 +8,13 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - http:
+    - host: boutique.local
+      http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: frontend-external
+                name: frontend  
                 port:
                   number: 80
